@@ -14,12 +14,12 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # 复制项目文件
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml ./
 COPY app ./app
 COPY data ./data
 
-# 使用 uv 安装依赖
-RUN uv sync --frozen
+# 使用 uv 安装依赖（不使用 lock 文件）
+RUN uv sync
 
 # 暴露端口
 EXPOSE 8000
