@@ -1,0 +1,64 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main  # 当推送到 main 分支时触发部署
+  workflow_dispatch:  # 允许手动触发部署
+
+jobs:
+  deploy:
+    name: Deploy to Remote Server
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 部署到远程服务器
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          script: |
+            echo "=========================================="
+            echo "开始部署 Mortgage Agent 应用"
+            echo "=========================================="
+            
+            # 进入项目目录
+            cd /root/mortgage-agent
+            
+            # 拉取最新代码
+            echo "正在拉取最新代码..."
+            git fetch origin
+            git reset --hard origin/main
+            git pull origin main
+            
+            # 停止并删除旧容器
+            echo "停止旧容器..."
+            docker-compose down || true
+            
+            # 删除旧镜像（可选，节省空间）
+            echo "清理旧镜像..."
+            docker image prune -f
+            
+            # 构建并启动新容器
+            echo "构建并启动新容器..."
+            docker-compose up -d --build
+            
+            # 等待容器启动
+            echo "等待容器启动..."
+            sleep 5
+            
+            # 检查容器状态
+            echo "检查容器状态..."
+            docker-compose ps
+            
+            # 查看容器日志（最后20行）
+            echo "=========================================="
+            echo "容器日志："
+            docker-compose logs --tail=20
+            
+            echo "=========================================="
+            echo "部署完成！"
+            echo "=========================================="
+

@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  mortgage-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mortgage-agent
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # 从 .env 文件或环境变量中读取配置
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      - MODEL_NAME=${MODEL_NAME:-gpt-4}
+    volumes:
+      # 挂载数据目录（如果需要动态更新贷款产品数据）
+      - ./data:/app/data:ro
+    networks:
+      - mortgage-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  mortgage-network:
+    driver: bridge
+
