@@ -12,6 +12,11 @@ build/
 venv/
 env/
 ENV/
+.venv
+
+# UV
+.uv/
+uv.lock
 
 # IDE
 .vscode/
@@ -45,4 +50,7 @@ tests/
 # OS
 .DS_Store
 Thumbs.db
+
+# Project config (不需要复制到容器，已有 requirements.txt)
+pyproject.toml
 

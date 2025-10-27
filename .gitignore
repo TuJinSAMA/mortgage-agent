@@ -28,7 +28,7 @@ ENV/
 
 # uv
 .uv/
-uv.lock
+# uv.lock - 保留此文件用于锁定依赖版本
 
 # IDE
 .vscode/

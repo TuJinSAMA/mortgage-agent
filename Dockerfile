@@ -4,19 +4,18 @@ FROM python:3.11-slim
 # 设置工作目录
 WORKDIR /app
 
-# 使用 pip 安装 uv (最稳定的方式)
-RUN pip install -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple --no-cache-dir uv
+# 先复制 requirements.txt（利用 Docker 缓存层）
+COPY requirements.txt ./
+
+# 配置 pip 使用清华镜像源（加速下载）
+RUN pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
+
+# 安装依赖（使用 uv 导出的 requirements.txt，锁定版本）
+RUN pip install --no-cache-dir -r requirements.txt
 
 # 复制项目文件
-COPY pyproject.toml ./
 COPY app ./app
 COPY data ./data
-
-# 设置环境变量：告诉 uv 使用系统 Python，不创建虚拟环境
-ENV UV_SYSTEM_PYTHON=1
-
-# 使用 uv pip 直接安装依赖到系统 Python（更适合 Docker）
-RUN uv pip install -e .
 
 # 暴露端口
 EXPOSE 8000
