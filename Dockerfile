@@ -5,7 +5,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # 使用 pip 安装 uv (最稳定的方式)
-RUN pip install --no-cache-dir uv
+RUN pip install -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple --no-cache-dir uv
 
 # 复制项目文件
 COPY pyproject.toml ./
