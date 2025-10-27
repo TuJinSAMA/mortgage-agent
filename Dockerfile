@@ -12,8 +12,11 @@ COPY pyproject.toml ./
 COPY app ./app
 COPY data ./data
 
-# 使用 uv 安装依赖（不使用 lock 文件）
-RUN uv sync --no-dev
+# 设置环境变量：告诉 uv 使用系统 Python，不创建虚拟环境
+ENV UV_SYSTEM_PYTHON=1
+
+# 使用 uv pip 直接安装依赖到系统 Python（更适合 Docker）
+RUN uv pip install -e .
 
 # 暴露端口
 EXPOSE 8000
@@ -22,6 +25,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()" || exit 1
 
-# 启动应用
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# 启动应用（直接使用 uvicorn，不需要 uv run）
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
