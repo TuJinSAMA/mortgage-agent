@@ -4,11 +4,8 @@ FROM python:3.11-slim
 # 设置工作目录
 WORKDIR /app
 
-# 安装 uv (快速的 Python 包管理器)
-# 使用 ADD 直接下载，避免安装 curl
-ADD https://astral.sh/uv/install.sh /tmp/uv-install.sh
-RUN sh /tmp/uv-install.sh && rm /tmp/uv-install.sh
-ENV PATH="/root/.cargo/bin:${PATH}"
+# 使用 pip 安装 uv (最稳定的方式)
+RUN pip install --no-cache-dir uv
 
 # 复制项目文件
 COPY pyproject.toml ./
