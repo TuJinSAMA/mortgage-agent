@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
@@ -24,6 +25,15 @@ app = FastAPI(
     title="Mortgage Agent API",
     description="A mortgage agent service built with FastAPI and LangChain",
     version="0.1.0"
+)
+
+# 配置 CORS 中间件 - 开发阶段允许所有域名请求
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 允许所有来源
+    allow_credentials=True,
+    allow_methods=["*"],  # 允许所有 HTTP 方法
+    allow_headers=["*"],  # 允许所有请求头
 )
 
 # 初始化大模型
@@ -318,13 +328,91 @@ async def check_missing_fields(request: CheckMissingFieldsRequest):
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """
-    与大模型对话的接口（保留用于向后兼容）
+    与大模型对话的接口 - 贷款产品推荐和咨询
+    
+    该接口专门用于:
+    - 推荐合适的贷款产品
+    - 解答贷款相关问题
+    - 解释贷款专业术语
     
     - **message**: 用户输入的消息
     """
     try:
-        # 调用大模型
-        response = await llm.ainvoke(request.message)
+        # 加载贷款产品数据
+        current_dir = Path(__file__).parent.parent
+        data_file = current_dir / "data" / "loan_products.json"
+        
+        # 加载贷款产品数据
+        products_data = []
+        if data_file.exists():
+            with open(data_file, 'r', encoding='utf-8') as f:
+                products_data = json.load(f)
+        
+        # 创建贷款顾问的系统提示词(不包含产品数据,避免花括号冲突)
+        loan_advisor_system_prompt = """You are a professional mortgage loan advisor assistant, specializing in helping users understand and select suitable loan products.
+
+Your responsibilities include:
+1. **Recommend Loan Products**: Based on user requirements (such as credit score, loan term, loan amount, etc.), recommend the most suitable options from available loan products
+2. **Answer Loan Questions**: Respond to user inquiries about loan processes, interest rates, repayment, and other related topics
+3. **Explain Technical Terms**: Use clear and accessible language to explain mortgage-related terminology, such as:
+   - CONV (Conventional Loan)
+   - FHA (Federal Housing Administration Loan)
+   - VA (Veterans Affairs Loan)
+   - USDA (United States Department of Agriculture Loan)
+   - ARM (Adjustable Rate Mortgage)
+   - FIXED (Fixed Rate Mortgage)
+   - ELITE/STANDARD (Credit tier - Elite tier requires 700+ credit score, Standard is the regular tier)
+   - HIGH_BALANCE/JUMBO (High balance loan amounts)
+   - OTC_ONE_TIME_CLOSE (One-Time Close construction loan)
+   - Price (Loan points - negative numbers indicate lender credits, positive numbers indicate points to be paid)
+   - Term (Loan term, such as 30-year, 15-year, 5/6 ARM, etc.)
+
+**Important Rules**:
+- ONLY answer questions related to loans, mortgages, and financial products
+- If users ask about unrelated topics (such as weather, entertainment, other domains), politely inform them that you can only answer loan-related questions
+- When recommending products, consider the user's specific situation, such as credit score, loan term preference, eligibility for special loan programs, etc.
+- Communicate with users in a professional yet friendly tone
+- If the user hasn't provided enough information to make a recommendation, proactively ask for necessary details
+
+**Language Adaptation**:
+- ALWAYS respond in the SAME LANGUAGE as the user's question
+- If the user asks in Chinese (中文), respond in Chinese
+- If the user asks in English, respond in English
+- Maintain natural and fluent expression in the chosen language
+
+**Loan Product Field Descriptions**:
+- name: Product name
+- program: Loan type (CONV/FHA/VA/USDA)
+- tier: Credit tier (ELITE requires 700+ credit score, STANDARD is regular tier)
+- balance_bucket: Loan amount type (STANDARD/HIGH_BALANCE/JUMBO)
+- construction_type: Property type (EXISTING for existing homes / OTC_ONE_TIME_CLOSE for construction loans)
+- arm_or_fixed: Rate type (FIXED or ARM)
+- rate: Interest rate (%)
+- price_15_day/price_30_day/price_45_day: Price points for different lock periods
+- term: Loan term
+- lender: Lending institution
+
+When answering, please refer to the loan product data provided below:
+
+{loan_products}"""
+        
+        # 创建对话提示词模板
+        chat_prompt = ChatPromptTemplate.from_messages([
+            ("system", loan_advisor_system_prompt),
+            ("human", "{message}")
+        ])
+        
+        # 创建对话链
+        chat_chain = chat_prompt | llm
+        
+        # 将产品数据格式化为字符串
+        loan_products_str = json.dumps(products_data, ensure_ascii=False, indent=2)
+        
+        # 调用大模型,传入消息和产品数据
+        response = await chat_chain.ainvoke({
+            "message": request.message,
+            "loan_products": loan_products_str
+        })
         
         return ChatResponse(response=response.content)
     except Exception as e:
