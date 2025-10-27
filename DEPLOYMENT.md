@@ -151,8 +151,8 @@ docker-compose logs -f mortgage-agent
 # 查看最近 100 行日志
 docker-compose logs --tail=100 mortgage-agent
 
-# 测试健康检查
-curl http://localhost:8000/health
+# 测试健康检查（应用运行在 8888 端口）
+curl http://localhost:8888/health
 ```
 
 ## 常见问题
@@ -207,15 +207,20 @@ docker-compose up -d --build
 
 ### 4. 端口冲突
 
-**问题**：8000 端口已被占用
+**问题**：端口已被占用
 
 **解决方案**：
+
+本项目默认使用 **8888 端口**（避免与 Nginx 等常见服务冲突）。
+
+如果 8888 端口也被占用：
 ```bash
 # 查看端口占用
-sudo lsof -i :8000
+sudo lsof -i :8888
 
 # 修改 docker-compose.yml 中的端口映射
-# 将 "8000:8000" 改为 "8080:8000" 或其他可用端口
+# 将 "8888:8000" 改为 "其他端口:8000"
+# 例如：- "9000:8000"
 ```
 
 ## 回滚部署
@@ -283,7 +288,7 @@ server {
     server_name your-domain.com;
 
     location / {
-        proxy_pass http://localhost:8000;
+        proxy_pass http://localhost:8888;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
